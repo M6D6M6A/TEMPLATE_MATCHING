@@ -1,0 +1,21 @@
+{
+    "method": "TM_CCORR_NORMED",
+    "mask_used": false,
+    "result_location": [
+        [
+            50,
+            50
+        ],
+        [
+            100,
+            100
+        ]
+    ],
+    "match_value": 0.0,
+    "normalized_match_value": 0.341174453496933,
+    "min_value": 0.0,
+    "max_value": 0.341174453496933,
+    "normalized_min_value": 0.0,
+    "normalized_max_val": 0.341174453496933,
+    "is_match": false
+}

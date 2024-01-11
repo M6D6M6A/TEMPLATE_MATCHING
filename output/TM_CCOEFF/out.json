@@ -1,0 +1,21 @@
+{
+    "method": "TM_CCOEFF",
+    "mask_used": false,
+    "result_location": [
+        [
+            39,
+            31
+        ],
+        [
+            89,
+            81
+        ]
+    ],
+    "match_value": 13.0,
+    "normalized_match_value": 13.0,
+    "min_value": -12.875,
+    "max_value": 13.0,
+    "normalized_min_value": -12.875,
+    "normalized_max_val": 13.0,
+    "is_match": true
+}

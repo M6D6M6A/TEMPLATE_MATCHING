@@ -1,0 +1,21 @@
+{
+    "method": "TM_CCORR_NORMED",
+    "mask_used": true,
+    "result_location": [
+        [
+            11,
+            8
+        ],
+        [
+            61,
+            58
+        ]
+    ],
+    "match_value": -Infinity,
+    "normalized_match_value": Infinity,
+    "min_value": -Infinity,
+    "max_value": Infinity,
+    "normalized_min_value": -Infinity,
+    "normalized_max_val": Infinity,
+    "is_match": true
+}

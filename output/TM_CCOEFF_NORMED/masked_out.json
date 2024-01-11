@@ -1,0 +1,21 @@
+{
+    "method": "TM_CCOEFF_NORMED",
+    "mask_used": true,
+    "result_location": [
+        [
+            0,
+            0
+        ],
+        [
+            50,
+            50
+        ]
+    ],
+    "match_value": NaN,
+    "normalized_match_value": NaN,
+    "min_value": NaN,
+    "max_value": NaN,
+    "normalized_min_value": NaN,
+    "normalized_max_val": NaN,
+    "is_match": false
+}

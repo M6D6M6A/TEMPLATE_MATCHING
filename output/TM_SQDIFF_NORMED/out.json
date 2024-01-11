@@ -1,0 +1,21 @@
+{
+    "method": "TM_SQDIFF_NORMED",
+    "mask_used": false,
+    "result_location": [
+        [
+            0,
+            0
+        ],
+        [
+            50,
+            50
+        ]
+    ],
+    "match_value": 1.0,
+    "normalized_match_value": 0.6321206092834473,
+    "min_value": 1.0,
+    "max_value": 1.0,
+    "normalized_min_value": 0.6321206092834473,
+    "normalized_max_val": 0.6321206092834473,
+    "is_match": false
+}

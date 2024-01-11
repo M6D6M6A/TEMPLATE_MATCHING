@@ -4,6 +4,8 @@ from PIL import Image, ImageDraw
 import cv2
 import numpy as np
 
+from tm_result import TMResult
+
 
 class TemplateMatcher:
     """
@@ -67,37 +69,42 @@ class TemplateMatcher:
 
         self.generate_test_images()
 
-    def generate_test_images(self) -> None:
-        """Generates and saves test images for template matching."""
+    def generate_test_images(self):
+        """Generate and save test images."""
+        # Image dimensions and settings
         img_size = (100, 100)
         plus_size = (50, 50)
         line_width = 2
         background_color = 'black'
         plus_color = 'white'
 
+        # Target image with '+' shape
         target_image = Image.new('RGB', img_size, background_color)
         draw = ImageDraw.Draw(target_image)
-        plus_coords = [
-            (img_size[0] - plus_size[0], img_size[1] -
-             plus_size[1] + plus_size[1]//2 - line_width//2),
-            (img_size[0], img_size[1] - plus_size[1] +
-             plus_size[1]//2 + line_width//2),
-            (img_size[0] - plus_size[0] + plus_size[0] //
-             2 - line_width//2, img_size[1] - plus_size[1]),
-            (img_size[0] - plus_size[0] + plus_size[0] //
-             2 + line_width//2, img_size[1])
-        ]
-        for coord in plus_coords:
-            draw.rectangle(coord, fill=plus_color)
+        plus_coords = [(img_size[0] - plus_size[0], img_size[1] - plus_size[1] + plus_size[1]//2 - line_width//2),
+                       (img_size[0], img_size[1] - plus_size[1] +
+                        plus_size[1]//2 + line_width//2),
+                       (img_size[0] - plus_size[0] + plus_size[0] //
+                        2 - line_width//2, img_size[1] - plus_size[1]),
+                       (img_size[0] - plus_size[0] + plus_size[0]//2 + line_width//2, img_size[1])]
+        draw.rectangle(plus_coords[0] + plus_coords[1], fill=plus_color)
+        draw.rectangle(plus_coords[2] + plus_coords[3], fill=plus_color)
         target_image.save(self.source_path)
 
+        # Template image with alpha channel '+'
         search_image = Image.new('RGBA', plus_size, (255, 255, 255, 0))
         draw = ImageDraw.Draw(search_image)
-        for coord in plus_coords:
-            draw.rectangle(coord, fill=(255, 255, 255, 255))
+        plus_coords_alpha = [(0, plus_size[1]//2 - line_width//2),
+                             (plus_size[0], plus_size[1]//2 + line_width//2),
+                             (plus_size[0]//2 - line_width//2, 0),
+                             (plus_size[0]//2 + line_width//2, plus_size[1])]
+        draw.rectangle(
+            plus_coords_alpha[0] + plus_coords_alpha[1], fill=(255, 255, 255, 255))
+        draw.rectangle(
+            plus_coords_alpha[2] + plus_coords_alpha[3], fill=(255, 255, 255, 255))
         search_image.save(self.template_path)
 
-    def match_template(self, mask: bool = False, method: int = cv2.TM_CCOEFF_NORMED) -> np.ndarray:
+    def match_template(self, mask: bool = False, method: int = cv2.TM_CCOEFF_NORMED) -> TMResult:
         """
         Performs template matching on an image using a specified OpenCV method, with an option to apply a mask.
 
@@ -145,7 +152,9 @@ class TemplateMatcher:
         if template.shape[-1] == 4:
             template = cv2.merge(cv2.split(template)[:3])
 
-        return cv2.matchTemplate(img, template, method, mask=mask_channel)
+        result = cv2.matchTemplate(img, template, method, mask=mask_channel)
+        tm_result = TMResult(method, self.get_method_name(method), result, img.shape[:2], template.shape[:2])
+        return tm_result
 
     def get_method_name(self, method: int) -> str:
         """Retrieves the string name of the specified matching method."""
@@ -159,7 +168,7 @@ class TemplateMatcher:
         }
         return method_names.get(method, f"Method_{method}")
 
-    def save_results(self, method: int, result: np.ndarray, mask: bool) -> None:
+    def save_results(self, method: int, tm_result: TMResult, mask: bool) -> None:
         """
         Saves the result images and JSON data for a specific method.
 
@@ -171,7 +180,7 @@ class TemplateMatcher:
             - mask : bool
                 - Indicates if the mask was used in template matching.
         """
-        method_name = self.get_method_name(method)
+        method_name = tm_result.method_name
         method_dir = self.output_dir / method_name
         method_dir.mkdir(exist_ok=True)
 
@@ -181,40 +190,45 @@ class TemplateMatcher:
         json_path = method_dir / f"{file_prefix}out.json"
 
         img = cv2.imread(str(self.source_path), cv2.IMREAD_UNCHANGED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        top_left = max_loc if method in [
-            cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED] else min_loc
-        bottom_right = (top_left[0] + img.shape[1], top_left[1] + img.shape[0])
+        top_left, bottom_right = tm_result.get_marker_coords()
 
         cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
         cv2.imwrite(str(result_img_path), img)
 
-        result_normalized = cv2.normalize(
-            result, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-        cv2.imwrite(str(grayscale_img_path), result_normalized)
+        tm_result_normalized = tm_result.normed_result
+        grayscale_normalized_img = cv2.normalize(
+            tm_result_normalized, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+        cv2.imwrite(str(grayscale_img_path), grayscale_normalized_img)
 
-        match_value = max_val if method in [
-            cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED] else min_val
-        grayscale_value = result[top_left[1], top_left[0]]
+        match_threshold = 0.98
+        normalized_match_value = tm_result_normalized[top_left[1], top_left[0]]
+        is_match = normalized_match_value >= match_threshold
 
-        if np.isinf(grayscale_value):
-            grayscale_value_str = "Infinity"
-        elif np.isnan(grayscale_value):
-            grayscale_value_str = "NaN"
-        else:
-            grayscale_value_str = int(grayscale_value)
+        min_val = float(np.nanmin(tm_result.result))
+        max_val = float(np.nanmax(tm_result.result))
+        normalized_min_val = float(np.nanmin(tm_result_normalized))
+        normalized_max_val = float(np.nanmax(tm_result_normalized))
+
+        match_value = float(max_val if method in [cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED] else min_val)
+        normalized_match_value = float(normalized_match_value)
+
+        _json = {
+            "method": method_name,
+            "mask_used": mask,
+            "result_location": (top_left, bottom_right),
+            "match_value": match_value,
+            "normalized_match_value": normalized_match_value,
+            "min_value": min_val,
+            "max_value": max_val,
+            "normalized_min_value": normalized_min_val,
+            "normalized_max_val": normalized_max_val,
+            "is_match": bool(is_match)
+        }
 
         with open(json_path, 'w') as f:
-            json.dump({
-                "method": method_name,
-                "mask_used": mask,
-                "result_location": (top_left, bottom_right),
-                "match_value": match_value,
-                "grayscale_value": grayscale_value_str
-            }, f, indent=4)
+            json.dump(_json, f, indent=4)
 
     def test(self) -> None:
-        """Tests different methods and saves results."""
         methods = [
             cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED, cv2.TM_CCORR,
             cv2.TM_CCORR_NORMED, cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED
@@ -222,8 +236,8 @@ class TemplateMatcher:
 
         for method in methods:
             for mask in [True, False]:
-                result = self.match_template(mask=mask, method=method)
-                self.save_results(method, result, mask)
+                tm_result = self.match_template(mask=mask, method=method)
+                self.save_results(method, tm_result, mask)
                 print(f"Results saved for method: {method}, Mask: {mask}")
 
 
