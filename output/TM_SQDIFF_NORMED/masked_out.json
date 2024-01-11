@@ -3,19 +3,36 @@
     "mask_used": true,
     "result_location": [
         [
-            0,
+            50,
             0
+        ],
+        [
+            50,
+            5
+        ],
+        [
+            50,
+            14
+        ],
+        [
+            50,
+            15
+        ],
+        [
+            50,
+            20
+        ],
+        [
+            50,
+            23
         ],
         [
             50,
             50
         ]
     ],
-    "match_value": 8.807960938383985e-08,
-    "normalized_match_value": 1.0,
-    "min_value": 8.807960938383985e-08,
+    "min_value": -1.2331146592714504e-07,
     "max_value": Infinity,
-    "normalized_min_value": 5.960464477539063e-08,
-    "normalized_max_val": 1.0,
-    "is_match": true
+    "normalized_min_value": 0.0,
+    "normalized_max_val": 1.000000238418579
 }

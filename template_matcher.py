@@ -87,8 +87,14 @@ class TemplateMatcher:
                        (img_size[0] - plus_size[0] + plus_size[0] //
                         2 - line_width//2, img_size[1] - plus_size[1]),
                        (img_size[0] - plus_size[0] + plus_size[0]//2 + line_width//2, img_size[1])]
+
+        # Add the white +
         draw.rectangle(plus_coords[0] + plus_coords[1], fill=plus_color)
         draw.rectangle(plus_coords[2] + plus_coords[3], fill=plus_color)
+
+        # Change the color of the top right 50x50 pixels to white
+        draw.rectangle(((50, 0), (100, 50)), fill=(255, 255, 255, 255))
+
         target_image.save(self.source_path)
 
         # Template image with alpha channel '+'
@@ -153,7 +159,8 @@ class TemplateMatcher:
             template = cv2.merge(cv2.split(template)[:3])
 
         result = cv2.matchTemplate(img, template, method, mask=mask_channel)
-        tm_result = TMResult(method, self.get_method_name(method), result, img.shape[:2], template.shape[:2])
+        tm_result = TMResult(method, self.get_method_name(
+            method), mask, result, img.shape[:2], template.shape[:2])
         return tm_result
 
     def get_method_name(self, method: int) -> str:
@@ -190,39 +197,26 @@ class TemplateMatcher:
         json_path = method_dir / f"{file_prefix}out.json"
 
         img = cv2.imread(str(self.source_path), cv2.IMREAD_UNCHANGED)
-        top_left, bottom_right = tm_result.get_marker_coords()
 
-        cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
-        cv2.imwrite(str(result_img_path), img)
+        for top_left, bottom_right in tm_result.get_marker_coords():
+            cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
+            cv2.imwrite(str(result_img_path), img)
 
-        tm_result_normalized = tm_result.normed_result
-        grayscale_normalized_img = cv2.normalize(
-            tm_result_normalized, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+        grayscale_normalized_img = 255 * tm_result.result
         cv2.imwrite(str(grayscale_img_path), grayscale_normalized_img)
 
-        match_threshold = 0.98
-        normalized_match_value = tm_result_normalized[top_left[1], top_left[0]]
-        is_match = normalized_match_value >= match_threshold
-
-        min_val = float(np.nanmin(tm_result.result))
-        max_val = float(np.nanmax(tm_result.result))
-        normalized_min_val = float(np.nanmin(tm_result_normalized))
-        normalized_max_val = float(np.nanmax(tm_result_normalized))
-
-        match_value = float(max_val if method in [cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED] else min_val)
-        normalized_match_value = float(normalized_match_value)
-
         _json = {
-            "method": method_name,
-            "mask_used": mask,
-            "result_location": (top_left, bottom_right),
-            "match_value": match_value,
-            "normalized_match_value": normalized_match_value,
-            "min_value": min_val,
-            "max_value": max_val,
-            "normalized_min_value": normalized_min_val,
-            "normalized_max_val": normalized_max_val,
-            "is_match": bool(is_match)
+            "method": tm_result.method_name,
+            "mask_used": bool(tm_result.mask_used),
+            "result_location": [
+                [
+                    int(c[0]), int(c[1])
+                ] for c in tm_result.get_coords()
+            ],
+            "min_value": float(tm_result._min) if tm_result._min is not None else None,
+            "max_value": float(tm_result._max) if tm_result._max is not None else None,
+            "normalized_min_value": float(tm_result.min) if tm_result.min is not None else None,
+            "normalized_max_val": float(tm_result.max) if tm_result.max is not None else None
         }
 
         with open(json_path, 'w') as f:
