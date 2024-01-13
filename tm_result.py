@@ -103,9 +103,11 @@ class TMResult:
         Returns:
             list: A list of tuples containing (x, y) coordinates of matching points.
         """
-        y_coords, x_coords = np.where(self.result >= self.threshold)
-        matching_coords = [(x, y) for x, y in zip(x_coords, y_coords)]
-        return matching_coords
+        return [
+            [x, y] for x, y in zip(
+                *np.where(self.result >= self.threshold)
+            )
+        ]
 
     def get_center(self):
         """
@@ -114,12 +116,12 @@ class TMResult:
         Returns:
             list: A list of tuples containing (x, y) coordinates of the center of the matched regions.
         """
-        result = []
-        for x, y in self.get_coords():
-            center_x = x + self.template_size[1] // 2
-            center_y = y + self.template_size[0] // 2
-            result.append([center_x, center_y])
-        return result
+        return [
+            [
+                x + self.template_size[1] // 2,
+                y + self.template_size[0] // 2
+            ] for x, y in self.get_coords()
+        ]
 
     def get_marker_coords(self):
         """
@@ -129,13 +131,16 @@ class TMResult:
             list: A list of tuples containing two tuples - ((x1, y1), (x2, y2)), 
                    where (x1, y1) are the top-left coordinates and (x2, y2) are the bottom-right coordinates.
         """
-        result = []
-        for x, y in self.get_coords():
-            top_left = (x, y)
-            bottom_right = (
-                x + self.template_size[1], y + self.template_size[0])
-            result.append([top_left, bottom_right])
-        return result
+        return [
+            [
+                [x, y],
+                [
+                    x + self.template_size[1],
+                    y + self.template_size[0]
+                ]
+            ]
+            for x, y in self.get_coords()
+        ]
 
     def get_grayscale_image(self) -> np.ndarray:
         """ Returns a grayscale version of the result, ensuring that the values are clipped between 0 and 255. """
