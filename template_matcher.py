@@ -83,7 +83,7 @@ class TemplateMatcher:
         ### Returns
         - List of (x, y) Coordinates
         """
-        return TemplateMatcher._match_template(img, template, mask=False, method=cv2.TM_SQDIFF_NORMED, threshold=threshold).get_coords()
+        return TemplateMatcher._match_template(img, template, mask=False, method=cv2.TM_SQDIFF_NORMED, threshold=threshold)
 
     @staticmethod
     def match_template_alpha(
@@ -118,10 +118,10 @@ class TemplateMatcher:
             else:
                 call_warning(tm_warning)
 
-        return TemplateMatcher._match_template(img, template, mask=True, method=cv2.TM_SQDIFF_NORMED, threshold=threshold).get_coords()
+        return TemplateMatcher._match_template(img, template, mask=True, method=cv2.TM_SQDIFF_NORMED, threshold=threshold)
 
+    @staticmethod
     def _match_template(
-            self,
             img: np.ndarray, template: np.ndarray,
             mask: bool = False, method: int = cv2.TM_SQDIFF_NORMED, threshold: float = 1.0
     ) -> TMResult:
@@ -169,6 +169,21 @@ class TemplateMatcher:
             template = cv2.merge(cv2.split(template)[:3])
 
         result = cv2.matchTemplate(img, template, method, mask=mask_channel)
-        tm_result = TMResult(method, self.get_method_name(
-            method), mask, result, img.shape[:2], template.shape[:2], threshold)
+        tm_result = TMResult(
+            method, TemplateMatcher.get_method_name(method),
+            mask, result, img.shape[:2], template.shape[:2], threshold
+        )
         return tm_result
+
+    @staticmethod
+    def get_method_name(method: int) -> str:
+        """Retrieves the string name of the specified matching method."""
+        method_names = {
+            cv2.TM_SQDIFF: "TM_SQDIFF",
+            cv2.TM_SQDIFF_NORMED: "TM_SQDIFF_NORMED",
+            cv2.TM_CCORR: "TM_CCORR",
+            cv2.TM_CCORR_NORMED: "TM_CCORR_NORMED",
+            cv2.TM_CCOEFF: "TM_CCOEFF",
+            cv2.TM_CCOEFF_NORMED: "TM_CCOEFF_NORMED"
+        }
+        return method_names.get(method, f"Method_{method}")

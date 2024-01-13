@@ -116,8 +116,8 @@ class TMResult:
         """
         result = []
         for x, y in self.get_coords():
-            center_x = x + self.template_size[0] // 2
-            center_y = y + self.template_size[1] // 2
+            center_x = x + self.template_size[1] // 2
+            center_y = y + self.template_size[0] // 2
             result.append([center_x, center_y])
         return result
 
@@ -133,7 +133,7 @@ class TMResult:
         for x, y in self.get_coords():
             top_left = (x, y)
             bottom_right = (
-                x + self.template_size[0], y + self.template_size[1])
+                x + self.template_size[1], y + self.template_size[0])
             result.append([top_left, bottom_right])
         return result
 
