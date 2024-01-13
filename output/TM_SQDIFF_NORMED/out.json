@@ -1,9 +1,18 @@
 {
     "method": "TM_SQDIFF_NORMED",
     "mask_used": false,
-    "result_location": [],
+    "result_location": [
+        [
+            50,
+            0
+        ],
+        [
+            50,
+            1
+        ]
+    ],
     "min_value": 0.0,
     "max_value": 1.0,
     "normalized_min_value": 0.0,
-    "normalized_max_val": 0.9811999797821045
+    "normalized_max_val": 1.0
 }

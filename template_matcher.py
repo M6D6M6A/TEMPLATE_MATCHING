@@ -11,15 +11,19 @@ class TemplateMatcher:
     """
     A class for performing template matching using various OpenCV methods.
 
-    This class is designed to facilitate the process of template matching on images. It includes functions to generate test images, perform template matching using different methods (with or without a mask), and save the results. The class handles the creation of necessary directories for resources and output data.
+    This class is designed to facilitate the process of template matching on images.
+    It includes functions to generate test images, perform template matching using different
+    methods (with or without a mask), and save the results. The class handles the creation
+    of necessary directories for resources and output data.
 
     ### Methods
         - __init__
             - Initializes the class, creates directories, and generates test images.
         - generate_test_images
             - Creates test images for template matching and saves them in the resources directory.
-        - match_template
-            - Performs template matching on the source image using a specified method. It can optionally use a mask if the template image supports it.
+        - _match_template
+            - Performs template matching on the source image using a specified method.
+              It can optionally use a mask if the template image supports it.
         - get_method_name
             - Retrieves the string name corresponding to an OpenCV template matching method.
         - save_results
@@ -42,7 +46,9 @@ class TemplateMatcher:
     >>> matcher = TemplateMatcher()
     >>> matcher.test()
 
-    This class can be used to compare the effectiveness of different template matching methods in OpenCV, particularly useful in applications like pattern recognition, object detection, and image processing.
+    This class can be used to compare the effectiveness of different template
+    matching methods in OpenCV, particularly useful in applications like pattern
+    recognition, object detection, and image processing.
 
     ### Attributes
         - _dir (Path)
@@ -57,99 +63,103 @@ class TemplateMatcher:
             - Path to the template image used for matching.
     """
 
-    def __init__(self) -> None:
-        """Initializes the TemplateMatcher class and creates necessary directories and test images."""
-        self._dir = Path(__file__).resolve().parent
-        self.resources_dir = self._dir / 'resources'
-        self.resources_dir.mkdir(exist_ok=True)
-        self.output_dir = self._dir / 'output'
-        self.output_dir.mkdir(exist_ok=True)
-        self.source_path = self.resources_dir / 'source.png'
-        self.template_path = self.resources_dir / 'template.png'
-
-        self.generate_test_images()
-
-    def generate_test_images(self):
-        """Generate and save test images."""
-        # Image dimensions and settings
-        img_size = (100, 100)
-        plus_size = (50, 50)
-        line_width = 2
-        background_color = 'black'
-        plus_color = 'white'
-
-        # Target image with '+' shape
-        target_image = Image.new('RGB', img_size, background_color)
-        draw = ImageDraw.Draw(target_image)
-        plus_coords = [(img_size[0] - plus_size[0], img_size[1] - plus_size[1] + plus_size[1]//2 - line_width//2),
-                       (img_size[0], img_size[1] - plus_size[1] +
-                        plus_size[1]//2 + line_width//2),
-                       (img_size[0] - plus_size[0] + plus_size[0] //
-                        2 - line_width//2, img_size[1] - plus_size[1]),
-                       (img_size[0] - plus_size[0] + plus_size[0]//2 + line_width//2, img_size[1])]
-
-        # Add the white +
-        draw.rectangle(plus_coords[0] + plus_coords[1], fill=plus_color)
-        draw.rectangle(plus_coords[2] + plus_coords[3], fill=plus_color)
-
-        # Change the color of the top right 50x50 pixels to white
-        draw.rectangle(((50, 0), (100, 50)), fill=(255, 255, 255, 255))
-
-        target_image.save(self.source_path)
-
-        # Template image with alpha channel '+'
-        search_image = Image.new('RGBA', plus_size, (255, 255, 255, 0))
-        draw = ImageDraw.Draw(search_image)
-        plus_coords_alpha = [(0, plus_size[1]//2 - line_width//2),
-                             (plus_size[0], plus_size[1]//2 + line_width//2),
-                             (plus_size[0]//2 - line_width//2, 0),
-                             (plus_size[0]//2 + line_width//2, plus_size[1])]
-        draw.rectangle(
-            plus_coords_alpha[0] + plus_coords_alpha[1], fill=(255, 255, 255, 255))
-        draw.rectangle(
-            plus_coords_alpha[2] + plus_coords_alpha[3], fill=(255, 255, 255, 255))
-        search_image.save(self.template_path)
-
-    def match_template(self, mask: bool = False, method: int = cv2.TM_CCOEFF_NORMED) -> TMResult:
+    @staticmethod
+    def match_template(img: np.ndarray, template: np.ndarray, threshold: float = 1.0) -> list:
         """
         Performs template matching on an image using a specified OpenCV method, with an option to apply a mask.
 
-        This function reads the source and template images specified in the class instance, and applies the template matching algorithm based on the provided method. An optional alpha channel mask can be used if the template image supports it.
-
         ### Args
-
-        mask : bool
-            - Indicates whether an alpha channel mask should be used for template matching. 
-              If True, the alpha channel of the template image is used as a mask. 
-              The template image must have an alpha channel (4th channel).
-
-        method : int 
-            - The OpenCV template matching method to be used. Available methods are:
-                - 0 | cv2.TM_SQDIFF: Squared difference
-                - 1 | cv2.TM_SQDIFF_NORMED: Normalized squared difference (recommended if mask=True)
-                - 2 | cv2.TM_CCORR: Cross correlation
-                - 3 | cv2.TM_CCORR_NORMED: Normalized cross correlation
-                - 4 | cv2.TM_CCOEFF: Correlation coefficient
-                - 5 | cv2.TM_CCOEFF_NORMED: Normalized correlation coefficient
+        img : np.ndarray
+            - The source image is what will be used to search for the template in it.
+        template : np.ndarray
+            - The template image that will be matched to each position of the source.
+        threshold : float
+            - The threshold used to find the results, if the image is close to the same
+              a min value of .95 or lower can be tested if 1.0 does not find it.
+              1.0 should work if its a exact match. (Consider hashing the image with md5
+              for faster performance if they match 100% and the ability to compare it with
+              as many hashes as you want without speed loss)
 
         ### Returns
-            - np.ndarray
-                - The result of the template matching, represented as a single-channel image. 
-                  Each pixel denotes how much does the template match the source image at that point.
-
-        ### Note
-            - The choice of the best method depends on the specific requirements of the application. 
-              In general, TM_SQDIFF_NORMED is recommended when using a mask, as it often provides more accurate results.
+        - List of (x, y) Coordinates
         """
-        img = cv2.imread(str(self.source_path), cv2.IMREAD_UNCHANGED)
-        template = cv2.imread(str(self.template_path), cv2.IMREAD_UNCHANGED)
+        return TemplateMatcher._match_template(img, template, mask=False, method=cv2.TM_SQDIFF_NORMED, threshold=threshold).get_coords()
 
+    @staticmethod
+    def match_template_alpha(
+        img: np.ndarray, template: np.ndarray, threshold: float = 1.0, call_warning=None
+    ) -> list:
+        """
+        Performs template matching on an image using a specified OpenCV method, applying a mask. (If the )
+
+        ### Args
+        img : np.ndarray
+            - The source image is what will be used to search for the template in it.
+        template : np.ndarray
+            - The template image that will be matched to each position of the source.
+        threshold : float
+            - The threshold used to find the results, if the image is close to the same a min 
+              value of .95 or lower can be tested if 1.0 does not find it.
+              1.0 should work if its a exact match. (Consider hashing the image with md5 for 
+              faster performance if they match 100% and the ability to compare it with as many 
+              hashes as you want without speed loss)
+        call_warning : function
+            - For example, pass a logger function like `call_warning = logger.warning` to log 
+              the warning message to the logger instead of printing it.
+
+        ### Returns
+        - List of (x, y) Coordinates
+        """
+        # Check if the template has an alpha channel
+        if template.shape[-1] != 4:
+            tm_warning = "Template has no alpha channel, should use `match_template` instead of `match_template_alpha`, but will still work!"
+            if call_warning is None:
+                print(tm_warning)
+            else:
+                call_warning(tm_warning)
+
+        return TemplateMatcher._match_template(img, template, mask=True, method=cv2.TM_SQDIFF_NORMED, threshold=threshold).get_coords()
+
+    def _match_template(
+            self,
+            img: np.ndarray, template: np.ndarray,
+            mask: bool = False, method: int = cv2.TM_SQDIFF_NORMED, threshold: float = 1.0
+    ) -> TMResult:
+        """
+        Performs template matching on an image using a specified OpenCV method, with an option to apply a mask.
+
+        ### Args
+        img : np.ndarray
+            - The source image is what will be used to search for the template in it.
+        template : np.ndarray
+            - The template image that will be matched to each position of the source.
+        mask : bool
+            - Indicates whether an alpha channel mask should be used for template matching.
+        method : int
+            - The OpenCV template matching method to be used.
+        threshold : float
+            - The threshold used to find the results, if the image is close to the same a min 
+              value of .95 or lower can be tested if 1.0 does not find it.
+              1.0 should work if its a exact match. (Consider hashing the image with md5 for 
+              faster performance if they match 100% and the ability to compare it with as many 
+              hashes as you want without speed loss)
+
+        ### Returns
+        - TMResult
+            - The result of the template matching.
+
+        ### Notes
+        - Only `method=cv2.TM_SQDIFF_NORMED` is fully implemented, without a mask the other _NORMED
+          should probably work as well, if the values are not normalized between 0 and 1 it will not work
+          and you have to implement the normalization yourself by finding the possible min and max values
+          and remapping the range to 0.0 - 1.0.
+        """
         if mask:
             if template.shape[-1] == 4:
                 mask_channel = cv2.split(template)[3]
             else:
-                raise ValueError(
-                    "Template image does not have an alpha channel for masking.")
+                mask = False
+                mask_channel = None
         else:
             mask_channel = None
 
@@ -160,81 +170,5 @@ class TemplateMatcher:
 
         result = cv2.matchTemplate(img, template, method, mask=mask_channel)
         tm_result = TMResult(method, self.get_method_name(
-            method), mask, result, img.shape[:2], template.shape[:2])
+            method), mask, result, img.shape[:2], template.shape[:2], threshold)
         return tm_result
-
-    def get_method_name(self, method: int) -> str:
-        """Retrieves the string name of the specified matching method."""
-        method_names = {
-            cv2.TM_SQDIFF: "TM_SQDIFF",
-            cv2.TM_SQDIFF_NORMED: "TM_SQDIFF_NORMED",
-            cv2.TM_CCORR: "TM_CCORR",
-            cv2.TM_CCORR_NORMED: "TM_CCORR_NORMED",
-            cv2.TM_CCOEFF: "TM_CCOEFF",
-            cv2.TM_CCOEFF_NORMED: "TM_CCOEFF_NORMED"
-        }
-        return method_names.get(method, f"Method_{method}")
-
-    def save_results(self, method: int, tm_result: TMResult, mask: bool) -> None:
-        """
-        Saves the result images and JSON data for a specific method.
-
-        ### Args
-            - method : int
-                - The method used for template matching.
-            - result : np.ndarray
-                - The result array from template matching.
-            - mask : bool
-                - Indicates if the mask was used in template matching.
-        """
-        method_name = tm_result.method_name
-        method_dir = self.output_dir / method_name
-        method_dir.mkdir(exist_ok=True)
-
-        file_prefix = "masked_" if mask else ""
-        result_img_path = method_dir / f"{file_prefix}out.png"
-        grayscale_img_path = method_dir / f"{file_prefix}grayscale_out.png"
-        json_path = method_dir / f"{file_prefix}out.json"
-
-        img = cv2.imread(str(self.source_path), cv2.IMREAD_UNCHANGED)
-
-        for top_left, bottom_right in tm_result.get_marker_coords():
-            cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
-            cv2.imwrite(str(result_img_path), img)
-
-        grayscale_normalized_img = 255 * tm_result.result
-        cv2.imwrite(str(grayscale_img_path), grayscale_normalized_img)
-
-        _json = {
-            "method": tm_result.method_name,
-            "mask_used": bool(tm_result.mask_used),
-            "result_location": [
-                [
-                    int(c[0]), int(c[1])
-                ] for c in tm_result.get_coords()
-            ],
-            "min_value": float(tm_result._min) if tm_result._min is not None else None,
-            "max_value": float(tm_result._max) if tm_result._max is not None else None,
-            "normalized_min_value": float(tm_result.min) if tm_result.min is not None else None,
-            "normalized_max_val": float(tm_result.max) if tm_result.max is not None else None
-        }
-
-        with open(json_path, 'w') as f:
-            json.dump(_json, f, indent=4)
-
-    def test(self) -> None:
-        methods = [
-            cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED, cv2.TM_CCORR,
-            cv2.TM_CCORR_NORMED, cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED
-        ]
-
-        for method in methods:
-            for mask in [True, False]:
-                tm_result = self.match_template(mask=mask, method=method)
-                self.save_results(method, tm_result, mask)
-                print(f"Results saved for method: {method}, Mask: {mask}")
-
-
-if __name__ == "__main__":
-    matcher = TemplateMatcher()
-    matcher.test()

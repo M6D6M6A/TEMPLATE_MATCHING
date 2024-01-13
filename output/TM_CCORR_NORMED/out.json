@@ -1,7 +1,16 @@
 {
     "method": "TM_CCORR_NORMED",
     "mask_used": false,
-    "result_location": [],
+    "result_location": [
+        [
+            50,
+            0
+        ],
+        [
+            50,
+            1
+        ]
+    ],
     "min_value": 0.0,
     "max_value": 1.0,
     "normalized_min_value": 0.0,
